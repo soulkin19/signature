@@ -3,304 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>汎用ミニゲームメーカー</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>簡単HTMLゲームメーカー</title>
     <style>
-        body { font-family: system-ui, sans-serif; }
-        canvas { background: #111827; border: 2px solid #374151; }
-        .preview-area { background: #1f2937; }
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #1e1e1e;
+            color: #fff;
+        }
+        #sidebar {
+            width: 300px;
+            background-color: #2d2d2d;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        #main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 1px solid #555; padding-bottom: 10px; }
+        .tool-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .tool-btn:hover { background-color: #45a049; }
+        
+        .upload-area {
+            background-color: #3d3d3d;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        input[type="file"] { width: 100%; margin-top: 10px; }
+
+        #preview-area {
+            flex-grow: 1;
+            background-color: #000;
+            border: 2px dashed #555;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        canvas {
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        
+        #code-area {
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+        }
+        textarea {
+            flex-grow: 1;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            border: 1px solid #555;
+            padding: 10px;
+            font-family: monospace;
+            resize: none;
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-white">
+<body>
 
-<div class="flex flex-col h-screen">
-    <!-- ヘッダー -->
-    <div class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex items-center justify-between">
-        <h1 class="text-2xl font-bold">🎮 汎用ミニゲームメーカー</h1>
-        <div class="flex gap-3">
-            <button onclick="newProject()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">新規作成</button>
-            <button onclick="exportGame()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg">HTMLとして保存</button>
+    <div id="sidebar">
+        <h2>機能を追加</h2>
+        <button class="tool-btn" onclick="addCode('init')">1. 基本セット(Canvas設定)を追加</button>
+        <button class="tool-btn" onclick="addCode('playerMove')">2. プレイヤー移動(WASD+スワイプ対応)を追加</button>
+        <button class="tool-btn" onclick="addCode('gameLoop')">3. ゲームループを追加</button>
+
+        <h2>ボスのテクスチャ設定</h2>
+        <div class="upload-area">
+            <label>画像をアップロードしてプレビュー:</label>
+            <input type="file" id="bossUpload" accept="image/*">
         </div>
     </div>
 
-    <div class="flex flex-1 overflow-hidden">
+    <div id="main">
+        <h2>プレビュー (アップロードしたテクスチャの確認)</h2>
+        <div id="preview-area">
+            <canvas id="gameCanvas" width="640" height="360"></canvas>
+        </div>
+
+        <div id="code-area">
+            <h2>自動生成コード</h2>
+            <textarea id="outputCode" readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const outputCode = document.getElementById('outputCode');
         
-        <!-- 左サイドバー：ゲームジャンル -->
-        <div class="w-64 bg-gray-800 border-r border-gray-700 p-4 overflow-y-auto">
-            <h2 class="text-lg font-semibold mb-4">ゲームジャンル</h2>
-            <div onclick="selectGame('clicker')" class="genre-btn flex items-center gap-3 p-3 hover:bg-gray-700 rounded-xl cursor-pointer mb-2" id="btn-clicker">
-                🍪 クリックゲーム
-            </div>
-            <div onclick="selectGame('runner')" class="genre-btn flex items-center gap-3 p-3 hover:bg-gray-700 rounded-xl cursor-pointer mb-2" id="btn-runner">
-                🏃 エンドレスランナー
-            </div>
-            <div onclick="selectGame('shooter')" class="genre-btn flex items-center gap-3 p-3 hover:bg-gray-700 rounded-xl cursor-pointer mb-2 opacity-50" id="btn-shooter">
-                🚀 シンプルシューティング（準備中）
-            </div>
-        </div>
+        // 生成するコードのテンプレート集
+        const codeTemplates = {
+            init: `// --- 基本設定 ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+`,
+            playerMove: `// --- プレイヤーと移動処理 (PCキーボード & iPadスワイプ対応) ---
+let player = { x: canvas.width/2, y: canvas.height/2, speed: 5, size: 30 };
+let keys = {};
 
-        <!-- 中央：プレビューエリア -->
-        <div class="flex-1 flex flex-col preview-area">
-            <div class="flex-1 flex items-center justify-center p-4 relative" id="preview-container">
-                
-                <!-- クリックゲーム用 -->
-                <div id="clicker-game" class="hidden flex-col items-center">
-                    <div id="score" class="text-5xl font-bold mb-8">0</div>
-                    <div onclick="clickCookie()" id="cookie" class="text-9xl cursor-pointer hover:scale-110 transition-transform">🍪</div>
-                    <p class="mt-6 text-xl">クリックしてポイントを稼ごう！</p>
-                    <div id="upgrades" class="mt-10 grid grid-cols-2 gap-4 w-96"></div>
-                </div>
+// キーボード入力
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-                <!-- ランナー用 Canvas -->
-                <canvas id="game-canvas" width="800" height="400" class="hidden rounded-2xl"></canvas>
-
-            </div>
-
-            <!-- 操作ボタン -->
-            <div class="bg-gray-800 border-t border-gray-700 p-4 flex justify-center gap-4">
-                <button onclick="togglePlay()" id="play-btn" class="px-8 py-3 bg-green-600 hover:bg-green-500 rounded-2xl font-medium">▶ プレイテスト</button>
-                <button onclick="resetGame()" class="px-8 py-3 bg-gray-600 hover:bg-gray-500 rounded-2xl font-medium">リセット</button>
-            </div>
-        </div>
-
-        <!-- 右パネル：設定 -->
-        <div class="w-72 bg-gray-800 border-l border-gray-700 p-4 overflow-y-auto">
-            <h2 class="text-lg font-semibold mb-4">設定</h2>
-            <div id="properties"></div>
-        </div>
-    </div>
-</div>
-
-<script>
-// ================ グローバル変数 ================
-let currentGame = null;           // 'clicker' or 'runner'
-let isPlaying = false;
-let score = 0;
-let clickPower = 1;
-
-// Runner用変数
-let canvas, ctx;
-let runnerPlayer = { x: 100, y: 300, width: 40, height: 60, vy: 0, jumping: false };
-let runnerSpeed = 5;
-let gravity = 0.8;
-let obstacles = [];
-let runnerScore = 0;
-let gameFrame = 0;
-
-// ================ ゲーム選択 ================
-function selectGame(type) {
-    currentGame = type;
-    document.querySelectorAll('.genre-btn').forEach(el => el.classList.remove('bg-blue-600'));
-    document.getElementById(`btn-${type}`).classList.add('bg-blue-600');
-
-    document.getElementById('clicker-game').classList.add('hidden');
-    document.getElementById('game-canvas').classList.add('hidden');
-
-    if (type === 'clicker') {
-        document.getElementById('clicker-game').classList.remove('hidden');
-        initClicker();
-    } else if (type === 'runner') {
-        document.getElementById('game-canvas').classList.remove('hidden');
-        initRunner();
-    }
-
-    renderProperties();
-}
-
-// ================ クリックゲーム ================
-function initClicker() {
-    score = 0;
-    clickPower = 1;
-    document.getElementById('score').textContent = score;
-    renderUpgrades();
-}
-
-function clickCookie() {
-    if (currentGame !== 'clicker') return;
-    score += clickPower;
-    document.getElementById('score').textContent = score;
-    
-    // ちょっとアニメーション
-    const cookie = document.getElementById('cookie');
-    cookie.style.transform = 'scale(1.3)';
-    setTimeout(() => cookie.style.transform = 'scale(1)', 80);
-}
-
-function renderUpgrades() {
-    const container = document.getElementById('upgrades');
-    container.innerHTML = `
-        <div onclick="buyUpgrade(2, 50)" class="bg-gray-700 hover:bg-gray-600 p-4 rounded-2xl cursor-pointer">
-            <div class="text-sm">クリック強化</div>
-            <div class="text-2xl font-bold">+2</div>
-            <div class="text-xs text-gray-400">50ポイント</div>
-        </div>
-        <div onclick="buyUpgrade(5, 150)" class="bg-gray-700 hover:bg-gray-600 p-4 rounded-2xl cursor-pointer">
-            <div class="text-sm">クリック大幅強化</div>
-            <div class="text-2xl font-bold">+5</div>
-            <div class="text-xs text-gray-400">150ポイント</div>
-        </div>
-    `;
-}
-
-function buyUpgrade(power, cost) {
-    if (score >= cost) {
-        score -= cost;
-        clickPower += power;
-        document.getElementById('score').textContent = score;
-        alert(`強化成功！ 現在クリック威力: ${clickPower}`);
-    } else {
-        alert("ポイントが足りません！");
-    }
-}
-
-// ================ エンドレスランナー ================
-function initRunner() {
-    canvas = document.getElementById('game-canvas');
-    ctx = canvas.getContext('2d');
-    runnerPlayer.y = 300;
-    runnerPlayer.vy = 0;
-    obstacles = [];
-    runnerScore = 0;
-    gameFrame = 0;
-    isPlaying = false;
-}
-
-function runnerLoop() {
-    if (!isPlaying || currentGame !== 'runner') return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 背景
-    ctx.fillStyle = '#1e2937';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 地面
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(0, 360, canvas.width, 40);
-
-    // プレイヤー（シンプル四角＋顔）
-    ctx.fillStyle = '#60a5fa';
-    ctx.fillRect(runnerPlayer.x, runnerPlayer.y, runnerPlayer.width, runnerPlayer.height);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(runnerPlayer.x + 10, runnerPlayer.y + 15, 8, 8); // 目
-
-    // 重力
-    runnerPlayer.vy += gravity;
-    runnerPlayer.y += runnerPlayer.vy;
-
-    if (runnerPlayer.y >= 300) {
-        runnerPlayer.y = 300;
-        runnerPlayer.vy = 0;
-        runnerPlayer.jumping = false;
-    }
-
-    // 障害物生成
-    gameFrame++;
-    if (gameFrame % 60 === 0) {
-        obstacles.push({ x: canvas.width, y: 320, width: 30, height: 40 });
-    }
-
-    // 障害物描画・移動
-    ctx.fillStyle = '#f87171';
-    for (let i = 0; i < obstacles.length; i++) {
-        const o = obstacles[i];
-        o.x -= runnerSpeed;
-        ctx.fillRect(o.x, o.y, o.width, o.height);
-
-        // 当たり判定
-        if (
-            runnerPlayer.x + runnerPlayer.width > o.x &&
-            runnerPlayer.x < o.x + o.width &&
-            runnerPlayer.y + runnerPlayer.height > o.y &&
-            runnerPlayer.y < o.y + o.height
-        ) {
-            alert(`ゲームオーバー！ スコア: ${Math.floor(runnerScore)}`);
-            isPlaying = false;
-            return;
-        }
-    }
-
-    // 古い障害物削除
-    obstacles = obstacles.filter(o => o.x > -50);
-
-    // スコア
-    runnerScore += 0.2;
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.fillText(`SCORE: ${Math.floor(runnerScore)}`, 30, 50);
-
-    requestAnimationFrame(runnerLoop);
-}
-
-// ================ プレイ/停止 ================
-function togglePlay() {
-    if (!currentGame) {
-        alert("まず左側からゲームジャンルを選んでください！");
-        return;
-    }
-
-    isPlaying = !isPlaying;
-
-    if (currentGame === 'runner') {
-        if (isPlaying) runnerLoop();
-    }
-    
-    document.getElementById('play-btn').textContent = isPlaying ? '⏸ 一時停止' : '▶ プレイテスト';
-}
-
-function resetGame() {
-    isPlaying = false;
-    document.getElementById('play-btn').textContent = '▶ プレイテスト';
-    
-    if (currentGame === 'clicker') initClicker();
-    if (currentGame === 'runner') initRunner();
-}
-
-// ================ 設定パネル ================
-function renderProperties() {
-    const container = document.getElementById('properties');
-    if (currentGame === 'clicker') {
-        container.innerHTML = `
-            <p class="text-gray-400 mb-2">現在のクリック威力: <span class="text-3xl font-bold text-yellow-400">${clickPower}</span></p>
-            <p class="text-sm text-gray-400">今後もっと多くのアップグレードや背景変更などを追加できます！</p>
-        `;
-    } else if (currentGame === 'runner') {
-        container.innerHTML = `
-            <label class="block mb-2">走る速度</label>
-            <input type="range" min="3" max="9" value="${runnerSpeed}" oninput="runnerSpeed=this.value" class="w-full">
-            <p class="text-xs text-gray-400 mt-6">Spaceキー or クリックでジャンプできます</p>
-        `;
-    } else {
-        container.innerHTML = `<p class="text-gray-400">設定項目は現在準備中です</p>`;
-    }
-}
-
-// ================ その他機能 ================
-function newProject() {
-    if (confirm("新しいプロジェクトを作成しますか？")) {
-        location.reload();
-    }
-}
-
-function exportGame() {
-    alert("今回は簡易版のため、完成したゲームは「ファイル → 名前を付けて保存」でこのHTML自体を保存してください。\n\n本格版にしたい場合は追加で教えてください！");
-}
-
-// キーボード操作（ランナー用）
-window.addEventListener('keydown', e => {
-    if (currentGame === 'runner' && isPlaying && !runnerPlayer.jumping && e.key === " ") {
-        runnerPlayer.vy = -18;
-        runnerPlayer.jumping = true;
-    }
+// スワイプ・タッチ操作（iPad等の画面用）
+let touchStartX = 0;
+let touchStartY = 0;
+canvas.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+});
+canvas.addEventListener('touchmove', e => {
+    let dx = e.touches[0].clientX - touchStartX;
+    let dy = e.touches[0].clientY - touchStartY;
+    player.x += dx * 0.1;
+    player.y += dy * 0.1;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
 });
 
-// 初期化
-window.onload = () => {
-    console.log("%c汎用ミニゲームメーカー起動完了！", "color:#60a5fa; font-size:18px");
-    // 最初にクリックゲームを選択
-    selectGame('clicker');
-};
-</script>
+function updatePlayer() {
+    if (keys['w']) player.y -= player.speed;
+    if (keys['s']) player.y += player.speed;
+    if (keys['a']) player.x -= player.speed;
+    if (keys['d']) player.x += player.speed;
+}
+`,
+            gameLoop: `// --- メインループ ---
+function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // プレイヤーの更新と描画
+    if(typeof updatePlayer === 'function') updatePlayer();
+    
+    ctx.fillStyle = 'blue';
+    ctx.fillRect(player.x, player.y, player.size, player.size);
+    
+    requestAnimationFrame(loop);
+}
+loop();
+`
+        };
 
+        // コードをテキストエリアに追記する関数
+        function addCode(type) {
+            outputCode.value += codeTemplates[type] + "\n";
+            outputCode.scrollTop = outputCode.scrollHeight; // 一番下までスクロール
+        }
+
+        // ボスのテクスチャアップロードとプレビュー処理
+        document.getElementById('bossUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    // プレビューのキャンバスをクリアして中央に描画
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // アスペクト比を維持して描画（最大200x200）
+                    let scale = Math.min(200 / img.width, 200 / img.height);
+                    let w = img.width * scale;
+                    let h = img.height * scale;
+                    let x = (canvas.width - w) / 2;
+                    let y = (canvas.height - h) / 2;
+                    
+                    ctx.drawImage(img, x, y, w, h);
+                    
+                    // 画像の読み込みコードも自動生成エリアに追加する
+                    outputCode.value += `// --- ボスのテクスチャロード ---
+const bossImg = new Image();
+bossImg.src = '${event.target.result.substring(0, 30)}...'; // Base64データの省略形
+// 実際の開発では、保存した画像のパスを指定してください
+`;
+                    outputCode.scrollTop = outputCode.scrollHeight;
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        });
+    </script>
 </body>
 </html>
