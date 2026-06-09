@@ -3,432 +3,340 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Platformer Editor</title>
+    <title>電子署名システム</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        :root {
-            --bg-color: #1a1a1a;
-            --panel-color: #2d2d2d;
-            --accent-color: #00adb5;
-            --text-color: #eeeeee;
-        }
-
         body {
+            font-family: 'Segoe UI', Meiryo, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             margin: 0;
             padding: 20px;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
         }
-
-        h1 {
-            margin-bottom: 10px;
-            font-size: 24px;
-            color: var(--accent-color);
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
-
-        #container {
+        header {
+            background: #2563eb;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .content {
+            padding: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #374151;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .signature-area {
+            border: 2px dashed #9ca3af;
+            border-radius: 8px;
+            background: #f9fafb;
+            margin: 20px 0;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: white;
+            cursor: crosshair;
+            touch-action: none;
+        }
+        .buttons {
             display: flex;
-            flex-direction: column;
-            gap: 15px;
-            background-color: var(--panel-color);
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        .btn-secondary:hover { background: #4b5563; }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover { background: #dc2626; }
+        .preview {
+            margin-top: 30px;
+            border: 1px solid #e5e7eb;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            background: #f8fafc;
         }
-
-        #toolbar {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
+        .signature-preview {
+            text-align: center;
+            margin-top: 20px;
         }
-
-        .btn-group {
-            display: flex;
-            border-radius: 4px;
-            overflow: hidden;
-            border: 1px solid #444;
-        }
-
-        button {
-            background-color: #3d3d3d;
-            color: var(--text-color);
-            border: none;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.2s;
-        }
-
-        button:hover {
-            background-color: #4d4d4d;
-        }
-
-        button.active {
-            background-color: var(--accent-color);
-            color: #000;
-        }
-
-        canvas {
-            background-color: #111;
-            border: 2px solid #444;
-            border-radius: 4px;
-            cursor: crosshair;
-        }
-
-        .io-section {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        textarea {
-            background-color: #111;
-            color: #00ff00;
-            border: 1px solid #444;
-            font-family: monospace;
-            padding: 5px;
-            width: 300px;
-            height: 30px;
-            resize: none;
-        }
-
-        .instructions {
-            font-size: 13px;
-            color: #aaa;
-            line-height: 1.5;
+        footer {
+            text-align: center;
+            padding: 15px;
+            color: #6b7280;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
+    <div class="container">
+        <header>
+            <h1>📝 電子署名システム</h1>
+            <p>簡単・安全・法的に有効な電子署名</p>
+        </header>
 
-    <h1>2D Platformer Maker</h1>
-
-    <div id="container">
-        <div id="toolbar">
-            <div class="btn-group">
-                <button id="btn-edit" class="active" onclick="setMode('edit')">エディット</button>
-                <button id="btn-play" onclick="setMode('play')">プレイ</button>
+        <div class="content">
+            <div class="form-group">
+                <label>契約書タイトル</label>
+                <input type="text" id="title" value="業務委託契約書" placeholder="契約書タイトルを入力">
             </div>
 
-            <div class="btn-group" id="palette">
-                <button id="tile-0" class="active" onclick="setSelectedTile(0)">消しゴム</button>
-                <button id="tile-1" style="border-bottom: 3px solid #795548;" onclick="setSelectedTile(1)">ブロック</button>
-                <button id="tile-2" style="border-bottom: 3px solid #ff5722;" onclick="setSelectedTile(2)">トゲ</button>
-                <button id="tile-3" style="border-bottom: 3px solid #4caf50;" onclick="setSelectedTile(3)">ゴール</button>
-                <button id="tile-4" style="border-bottom: 3px solid #e91e63;" onclick="setSelectedTile(4)">スタート位置</button>
+            <div class="form-group">
+                <label>署名者名</label>
+                <input type="text" id="name" placeholder="山田 太郎" value="山田 太郎">
             </div>
 
-            <button onclick="clearMap()" style="background-color: #d32f2f;">全消去</button>
+            <div class="form-group">
+                <label>役職・所属</label>
+                <input type="text" id="position" placeholder="代表取締役" value="代表取締役">
+            </div>
+
+            <div class="signature-area">
+                <label style="padding: 15px 15px 0 15px;">署名欄（マウスまたは指で署名してください）</label>
+                <canvas id="canvas" width="700" height="300"></canvas>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-danger" onclick="clearCanvas()">🗑️ クリア</button>
+                <button class="btn-secondary" onclick="undoLast()">↩️ 1つ戻す</button>
+                <button class="btn-primary" onclick="saveSignature()">💾 PNGで保存</button>
+                <button class="btn-primary" onclick="generatePDF()">📄 PDFで保存</button>
+            </div>
+
+            <div class="preview">
+                <h3>プレビュー</h3>
+                <div id="previewContent" style="border: 1px solid #ccc; padding: 20px; background: white; min-height: 200px;">
+                    <h2 id="previewTitle" style="text-align:center;">業務委託契約書</h2>
+                    <p style="text-align:right; margin-top: 80px;">署名：</p>
+                    <div id="signaturePreview" class="signature-preview"></div>
+                    <p style="text-align:right;" id="previewName">山田 太郎</p>
+                    <p style="text-align:right;" id="previewDate"></p>
+                </div>
+            </div>
         </div>
 
-        <canvas id="gameCanvas" width="800" height="480"></canvas>
-
-        <div class="io-section">
-            <button onclick="exportMap()">データ出力</button>
-            <button onclick="importMap()">データ読み込み</button>
-            <textarea id="dataArea" placeholder="ここにステージデータ(JSON)が出力・入力されます"></textarea>
-        </div>
-
-        <div class="instructions">
-            <strong>【エディットモード】</strong> マウスクリック / ドラッグで配置<br>
-            <strong>【プレイモード】</strong> A/D または 左右矢印キー：移動 | W, Space, または 上矢印キー：ジャンプ
-        </div>
+        <footer>
+            このデモはHTML + JavaScriptのみで動作します。<br>
+            実際の運用時はサーバー側での証明書・タイムスタンプ対応をおすすめします。
+        </footer>
     </div>
 
-<script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let history = [];
 
-    // グリッド・マップ設定
-    const TILE_SIZE = 40;
-    const COLS = canvas.width / TILE_SIZE; // 20
-    const ROWS = canvas.height / TILE_SIZE; // 12
-
-    // マップデータ (0:空, 1:地面, 2:トゲ, 3:ゴール)
-    let map = Array(ROWS).fill().map(() => Array(COLS).fill(0));
-    
-    // 初期ステージ構成（地面を敷く）
-    for(let i = 0; i < COLS; i++) map[ROWS-1][i] = 1;
-
-    // システム状態
-    let currentMode = 'edit'; // 'edit' or 'play'
-    let selectedTile = 1; // デフォルトはブロック
-    let isDrawing = false;
-
-    // プレイヤー初期位置
-    let startPos = { x: 80, y: 360 };
-
-    // プレイヤーオブジェクト
-    let player = {
-        x: startPos.x,
-        y: startPos.y,
-        width: 24,
-        height: 32,
-        vx: 0,
-        vy: 0,
-        grounded: false,
-        speed: 4,
-        jumpForce: 9.5,
-        gravity: 0.4
-    };
-
-    // キー入力状態
-    const keys = {};
-
-    // イベントリスナー登録
-    window.addEventListener('keydown', e => keys[e.key] = true);
-    window.addEventListener('keyup', e => keys[e.key] = false);
-
-    canvas.addEventListener('mousedown', e => { if(currentMode === 'edit') { isDrawing = true; handleMouse(e); } });
-    canvas.addEventListener('mousemove', e => { if(isDrawing && currentMode === 'edit') handleMouse(e); });
-    window.addEventListener('mouseup', () => isDrawing = false);
-
-    // マウス入力処理
-    function handleMouse(e) {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        const col = Math.floor(mouseX / TILE_SIZE);
-        const row = Math.floor(mouseY / TILE_SIZE);
-
-        if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
-            if (selectedTile === 4) {
-                // スタート位置の設定
-                startPos.x = col * TILE_SIZE + (TILE_SIZE - player.width) / 2;
-                startPos.y = row * TILE_SIZE + (TILE_SIZE - player.height);
-                resetPlayer();
-            } else {
-                map[row][col] = selectedTile;
-            }
-        }
-    }
-
-    // モード切り替え
-    function setMode(mode) {
-        currentMode = mode;
-        document.getElementById('btn-edit').classList.toggle('active', mode === 'edit');
-        document.getElementById('btn-play').classList.toggle('active', mode === 'play');
-        document.getElementById('palette').style.pointerEvents = mode === 'edit' ? 'auto' : 'none';
-        document.getElementById('palette').style.opacity = mode === 'edit' ? '1' : '0.5';
-
-        if (mode === 'play') {
-            resetPlayer();
-        }
-    }
-
-    function setSelectedTile(tileType) {
-        selectedTile = tileType;
-        for (let i = 0; i <= 4; i++) {
-            const btn = document.getElementById(`tile-${i}`);
-            if (btn) btn.classList.toggle('active', i === tileType);
-        }
-    }
-
-    function resetPlayer() {
-        player.x = startPos.x;
-        player.y = startPos.y;
-        player.vx = 0;
-        player.vy = 0;
-        player.grounded = false;
-    }
-
-    function clearMap() {
-        if(confirm("ステージを全消去しますか？")) {
-            map = Array(ROWS).fill().map(() => Array(COLS).fill(0));
-            for(let i = 0; i < COLS; i++) map[ROWS-1][i] = 1; // 最下層だけ残す
-            resetPlayer();
-        }
-    }
-
-    // 衝突判定 (AABB)
-    function checkCollision(x, y, w, h) {
-        const startCol = Math.floor(x / TILE_SIZE);
-        const endCol = Math.floor((x + w) / TILE_SIZE);
-        const startRow = Math.floor(y / TILE_SIZE);
-        const endRow = Math.floor((y + h) / TILE_SIZE);
-
-        let collisions = [];
-
-        for (let r = startRow; r <= endRow; r++) {
-            for (let c = startCol; c <= endCol; c++) {
-                if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
-                    const tile = map[r][c];
-                    if (tile > 0) {
-                        collisions.push({ row: r, col: c, type: tile });
-                    }
-                }
-            }
-        }
-        return collisions;
-    }
-
-    // ゲーム状態の更新
-    function update() {
-        if (currentMode !== 'play') return;
-
-        // 左右移動 (iPad外部キーボード等も考慮し、主要なキーをカバー)
-        player.vx = 0;
-        if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.vx = -player.speed;
-        if (keys['ArrowRight'] || keys['d'] || keys['D']) player.vx = player.speed;
-
-        // 重力加速
-        player.vy += player.gravity;
-        if (player.vy > 12) player.vy = 12; // 終端速度制限
-
-        // ジャンプ処理
-        if ((keys['ArrowUp'] || keys['w'] || keys['W'] || keys[' ']) && player.grounded) {
-            player.vy = -player.jumpForce;
-            player.grounded = false;
+        // キャンバス初期化
+        function initCanvas() {
+            ctx.strokeStyle = "#1f2937";
+            ctx.lineWidth = 4;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            clearCanvas();
         }
 
-        // X軸の移動と衝突判定
-        player.x += player.vx;
-        let hits = checkCollision(player.x, player.y, player.width, player.height);
-        for (let hit of hits) {
-            if (hit.type === 1) { // ブロック
-                if (player.vx > 0) player.x = hit.col * TILE_SIZE - player.width;
-                if (player.vx < 0) player.x = (hit.col + 1) * TILE_SIZE;
-            }
-            handleSpecialTiles(hit.type);
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            history = [];
+            updatePreview();
         }
 
-        // Y軸の移動と衝突判定
-        player.y += player.vy;
-        hits = checkCollision(player.x, player.y, player.width, player.height);
-        player.grounded = false;
-        for (let hit of hits) {
-            if (hit.type === 1) { // ブロック
-                if (player.vy > 0) {
-                    player.y = hit.row * TILE_SIZE - player.height;
-                    player.vy = 0;
-                    player.grounded = true;
-                } else if (player.vy < 0) {
-                    player.y = (hit.row + 1) * TILE_SIZE;
-                    player.vy = 0;
-                }
-            }
-            handleSpecialTiles(hit.type);
-        }
-
-        // 画面外落下
-        if (player.y > canvas.height) {
-            resetPlayer();
-        }
-    }
-
-    function handleSpecialTiles(type) {
-        if (type === 2) { // トゲ
-            resetPlayer();
-        } else if (type === 3) { // ゴール
-            alert("ステージクリア！");
-            setMode('edit');
-        }
-    }
-
-    // 描画処理
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // グリッド線の描画（エディットモード時のみ薄く表示）
-        if (currentMode === 'edit') {
-            ctx.strokeStyle = '#222';
-            ctx.lineWidth = 1;
-            for (let i = 0; i <= COLS; i++) {
-                ctx.beginPath();
-                ctx.moveTo(i * TILE_SIZE, 0);
-                ctx.lineTo(i * TILE_SIZE, canvas.height);
-                ctx.stroke();
-            }
-            for (let i = 0; i <= ROWS; i++) {
-                ctx.beginPath();
-                ctx.moveTo(0, i * TILE_SIZE);
-                ctx.lineTo(canvas.width, i * TILE_SIZE);
-                ctx.stroke();
-            }
-        }
-
-        // マップタイルの描画
-        for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < COLS; c++) {
-                const tile = map[r][c];
-                if (tile === 1) {
-                    // ブロック
-                    ctx.fillStyle = '#795548';
-                    ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                    ctx.strokeStyle = '#5d4037';
-                    ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                } else if (tile === 2) {
-                    // トゲ
-                    ctx.fillStyle = '#ff5722';
+        function undoLast() {
+            if (history.length > 0) {
+                history.pop();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                history.forEach(path => {
                     ctx.beginPath();
-                    ctx.moveTo(c * TILE_SIZE, (r + 1) * TILE_SIZE);
-                    ctx.lineTo(c * TILE_SIZE + TILE_SIZE / 2, r * TILE_SIZE);
-                    ctx.lineTo((c + 1) * TILE_SIZE, (r + 1) * TILE_SIZE);
-                    ctx.fill();
-                } else if (tile === 3) {
-                    // ゴール
-                    ctx.fillStyle = 'rgba(76, 175, 80, 0.3)';
-                    ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                    ctx.strokeStyle = '#4caf50';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
+                    ctx.moveTo(path[0].x, path[0].y);
+                    for (let i = 1; i < path.length; i++) {
+                        ctx.lineTo(path[i].x, path[i].y);
+                    }
+                    ctx.stroke();
+                });
+                updatePreview();
             }
         }
 
-        // プレイヤー初期位置の目印（エディットモード時のみ）
-        if (currentMode === 'edit') {
-            ctx.strokeStyle = '#e91e63';
-            ctx.setLineDash([4, 4]);
-            ctx.strokeRect(startPos.x, startPos.y, player.width, player.height);
-            ctx.setLineDash([]);
+        // マウスイベント
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // タッチイベント（スマホ対応）
+        canvas.addEventListener('touchstart', handleTouchStart);
+        canvas.addEventListener('touchmove', handleTouchMove);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        function startDrawing(e) {
+            drawing = true;
+            const pos = getMousePos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+            history.push([{x: lastX, y: lastY}]);
         }
 
-        // プレイヤーの描画
-        ctx.fillStyle = '#e91e63';
-        ctx.fillRect(player.x, player.y, player.width, player.height);
-    }
+        function draw(e) {
+            if (!drawing) return;
+            const pos = getMousePos(e);
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
 
-    // メインループ
-    function loop() {
-        update();
-        draw();
-        requestAnimationFrame(loop);
-    }
+            history[history.length - 1].push({x: pos.x, y: pos.y});
 
-    // データ入出力ロジック
-    function exportMap() {
-        const data = {
-            map: map,
-            startPos: startPos
+            lastX = pos.x;
+            lastY = pos.y;
+            updatePreview();
+        }
+
+        function stopDrawing() {
+            drawing = false;
+        }
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        // PNG保存
+        function saveSignature() {
+            const link = document.createElement('a');
+            link.download = '電子署名.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // PDF生成
+        async function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const title = document.getElementById('title').value || "契約書";
+            const name = document.getElementById('name').value || "署名者";
+            const position = document.getElementById('position').value || "";
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(20);
+            doc.text(title, 105, 30, { align: "center" });
+
+            doc.setFontSize(12);
+            doc.text("上記内容に同意の上、電子署名をいたします。", 20, 80);
+
+            // 署名画像を追加
+            const signatureData = canvas.toDataURL('image/png');
+            doc.addImage(signatureData, 'PNG', 30, 120, 120, 60);
+
+            doc.text(name, 40, 200);
+            if (position) doc.text(position, 40, 210);
+
+            const date = new Date().toLocaleDateString('ja-JP');
+            doc.text(date, 140, 200);
+
+            doc.save(`${title}_署名済.pdf`);
+        }
+
+        // プレビュー更新
+        function updatePreview() {
+            const preview = document.getElementById('signaturePreview');
+            preview.innerHTML = '';
+            
+            if (canvas.toDataURL('image/png').length > 1000) {
+                const img = document.createElement('img');
+                img.src = canvas.toDataURL('image/png');
+                img.style.maxWidth = '300px';
+                img.style.maxHeight = '120px';
+                preview.appendChild(img);
+            }
+
+            document.getElementById('previewTitle').textContent = 
+                document.getElementById('title').value || "契約書";
+            
+            document.getElementById('previewName').textContent = 
+                document.getElementById('name').value || "署名者";
+            
+            const dateEl = document.getElementById('previewDate');
+            dateEl.textContent = new Date().toLocaleDateString('ja-JP', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            }) + " 署名";
+        }
+
+        // 入力変更時にプレビュー更新
+        document.getElementById('title').addEventListener('input', updatePreview);
+        document.getElementById('name').addEventListener('input', updatePreview);
+        document.getElementById('position').addEventListener('input', updatePreview);
+
+        // 初期化
+        window.onload = function() {
+            initCanvas();
+            updatePreview();
         };
-        document.getElementById('dataArea').value = JSON.stringify(data);
-    }
-
-    function importMap() {
-        const rawData = document.getElementById('dataArea').value;
-        try {
-            const parsed = JSON.parse(rawData);
-            if (parsed.map && parsed.startPos) {
-                map = parsed.map;
-                startPos = parsed.startPos;
-                resetPlayer();
-                alert("ステージを読み込みました。");
-            } else {
-                alert("データ形式が正しくありません。");
-            }
-        } catch(e) {
-            alert("データのパースに失敗しました。無効なJSONです。");
-        }
-    }
-
-    // ループ開始
-    requestAnimationFrame(loop);
-</script>
+    </script>
 </body>
 </html>
